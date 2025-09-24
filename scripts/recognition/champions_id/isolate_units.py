@@ -6,10 +6,10 @@ import os
 # CONFIGURATION
 # ==============================
 
-INPUT_DIR = "board_crops"   
-EMPTY_BOARD_IMG = "board.png" 
+INPUT_DIR = "../../data/board_crops"
+EMPTY_BOARD_IMG = "../../data/reference_board/cropped_empty_board.png"
 
-OUTPUT_DIR = "output"
+OUTPUT_DIR = "../../data/units"
 BOARD_DIR = os.path.join(OUTPUT_DIR, "board")
 BENCH_DIR = os.path.join(OUTPUT_DIR, "bench")
 os.makedirs(BOARD_DIR, exist_ok=True)

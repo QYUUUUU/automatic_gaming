@@ -6,10 +6,10 @@ from skimage.metrics import structural_similarity as ssim
 # --- CONFIGURATION ---
 
 # Folder with cropped items
-cropped_folder = "cropped_items"
+cropped_folder = "../../../output/temp/cropped_items"
 
 # Folder with reference items from MetaTFT
-reference_folder = "tft_items"
+reference_folder = "../../../data/items"
 
 # Optional: similarity threshold (0-1)
 THRESHOLD = 0.2

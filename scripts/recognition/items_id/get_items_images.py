@@ -3,7 +3,7 @@ import os
 import requests
 
 URL = "https://www.metatft.com/items"
-OUTPUT_DIR = "tft_items"
+OUTPUT_DIR = "../../../data/items"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 def download_image(url, filename):

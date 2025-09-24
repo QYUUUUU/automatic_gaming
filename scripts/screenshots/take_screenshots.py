@@ -6,7 +6,7 @@ import os
 from datetime import datetime
 
 # --- CONFIGURATION ---
-save_dir = "board_screenshots"
+save_dir = "../../data/raw_screenshots"
 os.makedirs(save_dir, exist_ok=True)
 
 monitor_index = 1  # left monitor

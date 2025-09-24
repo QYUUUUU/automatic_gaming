@@ -22,7 +22,7 @@ item_width = 41
 item_height = 42
 
 # Output folder for cropped items
-output_dir = "cropped_items"
+output_dir = "../../../output/temp/cropped_items"
 os.makedirs(output_dir, exist_ok=True)
 
 # === GENERATE COORDINATES ===
@@ -31,10 +31,6 @@ for i in range(num_items):
     x = first_item[0]
     y = first_item[1] + i * y_offset
     item_coords.append((x, y, item_width, item_height))
-
-# Save coordinates to JSON for later
-with open("item_slot_coords.json", "w") as f:
-    json.dump(item_coords, f, indent=2)
 
 print(f"✅ Generated coordinates for {num_items} item slots.")
 
