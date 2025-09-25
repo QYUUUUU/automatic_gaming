@@ -1,19 +1,16 @@
 import cv2
 import numpy as np
 import os
+from typing import Optional, Union
+from pathlib import Path
 
 # ==============================
-# CONFIGURATION
+# DEFAULT CONFIGURATION
 # ==============================
 
-INPUT_DIR = "../../data/board_crops"
-EMPTY_BOARD_IMG = "../../data/reference_board/cropped_empty_board.png"
-
-OUTPUT_DIR = "../../data/units"
-BOARD_DIR = os.path.join(OUTPUT_DIR, "board")
-BENCH_DIR = os.path.join(OUTPUT_DIR, "bench")
-os.makedirs(BOARD_DIR, exist_ok=True)
-os.makedirs(BENCH_DIR, exist_ok=True)
+DEFAULT_INPUT_DIR = "../../data/board_crops"
+DEFAULT_EMPTY_BOARD_IMG = "../data/reference_board/cropped_empty_board.png"
+DEFAULT_OUTPUT_DIR = "../../data/units"
 
 # Board grid
 ROWS, COLS = 4, 7
@@ -27,7 +24,7 @@ BENCH_W, BENCH_H = 1040, 165
 BENCH_SRC_POINTS = np.float32([[60, 390], [1090, 390], [1105, 480], [35, 480]])
 
 UNIT_HEIGHT = 165          # Fixed crop height for champions
-AREA_THRESHOLD = 0.1      # Minimum fraction of pixels to consider unit present
+AREA_THRESHOLD = 0.08      # Minimum fraction of pixels to consider unit present
 BOTTOM_OFFSET = 15         # Keep bottom 15px above original hex bottom
 
 # ==============================
@@ -124,7 +121,15 @@ def crop_unit_if_present(img, mask, x_min, y_min, x_max, y_max, area_threshold):
 # MAIN PIPELINE
 # ==============================
 
-def process_file(filename, empty_board):
+def process_file(filename: str, empty_board: np.ndarray, board_dir: str, bench_dir: str) -> None:
+    """Process a single image file to extract units from board and bench positions.
+    
+    Args:
+        filename: Path to the input image file
+        empty_board: The empty board reference image
+        board_dir: Output directory for board units
+        bench_dir: Output directory for bench units
+    """
     img = cv2.imread(filename)
     if img is None:
         print(f"⚠️ Skipping {filename} (could not load)")
@@ -152,7 +157,7 @@ def process_file(filename, empty_board):
 
         crop = crop_unit_if_present(units_img, units_mask, x_min, y_min_crop, x_max, y_max_crop, AREA_THRESHOLD)
         if crop is not None:
-            filename_out = os.path.join(BOARD_DIR, f"{basename}_unit_{i+1}.png")
+            filename_out = os.path.join(board_dir, f"{basename}_unit_{i+1}.png")
             cv2.imwrite(filename_out, crop)
 
     # ------------------ Bench ------------------
@@ -181,11 +186,18 @@ def process_file(filename, empty_board):
 
         crop = crop_unit_if_present(units_img, units_mask, x_min, y_min_expanded, x_max, y_max_expanded, AREA_THRESHOLD)
         if crop is not None:
-            filename_out = os.path.join(BENCH_DIR, f"{basename}_bench_unit_{i+1}.png")
+            filename_out = os.path.join(bench_dir, f"{basename}_bench_unit_{i+1}.png")
             cv2.imwrite(filename_out, crop)
 
-def preview_grids(filename, empty_board, show_units=True, show_empty=True):
-    """Overlay the board/bench grids and optionally detected units + empty slots on the given image."""
+def preview_grids(filename: str, empty_board: np.ndarray, show_units: bool = True, show_empty: bool = True) -> None:
+    """Overlay the board/bench grids and optionally detected units + empty slots on the given image.
+    
+    Args:
+        filename: Path to the input image
+        empty_board: The empty board reference image
+        show_units: Whether to show detected units
+        show_empty: Whether to show empty slots
+    """
     img = cv2.imread(filename)
     if img is None:
         raise FileNotFoundError(f"Could not load {filename}")
@@ -280,25 +292,126 @@ def preview_grids(filename, empty_board, show_units=True, show_empty=True):
     cv2.destroyAllWindows()
 
 
+def isolate_units(
+    input_path: Union[str, Path],
+    output_dir: Union[str, Path],
+    preview_image: Optional[Union[str, Path]] = None,
+    show_preview: bool = False,
+    show_units: bool = True,
+    show_empty: bool = True
+) -> None:
+    """Main function to process images and extract units from board and bench positions.
+    
+    Args:
+        input_path: Path to a single image file or directory containing images
+        output_dir: Directory where extracted units will be saved
+        preview_image: Specific image to preview (if None, uses first available image)
+        show_preview: Whether to show the grid preview
+        show_units: Whether to show detected units in preview
+        show_empty: Whether to show empty slots in preview
+    
+    Returns:
+        None
+    
+    Raises:
+        FileNotFoundError: If input paths don't exist
+        ValueError: If no valid image files found in input directory
+    """
+    # Convert paths to Path objects for easier handling
+    input_path = Path(input_path)
+    empty_board_path = Path(DEFAULT_EMPTY_BOARD_IMG)
+    output_dir = Path(output_dir)
+    
+    # Validate input paths
+    if not input_path.exists():
+        raise FileNotFoundError(f"Input path does not exist: {input_path}")
+    if not empty_board_path.exists():
+        raise FileNotFoundError(f"Empty board image does not exist: {empty_board_path}")
+    
+    # Load empty board reference
+    empty_board = cv2.imread(str(empty_board_path))
+    if empty_board is None:
+        raise FileNotFoundError(f"Could not load empty board image: {empty_board_path}")
+    
+    # Create output directories
+    board_dir = output_dir / "board"
+    bench_dir = output_dir / "bench"
+    board_dir.mkdir(parents=True, exist_ok=True)
+    bench_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Collect image files to process
+    image_extensions = {'.png', '.jpg', '.jpeg', '.bmp', '.tiff'}
+    
+    if input_path.is_file():
+        if input_path.suffix.lower() not in image_extensions:
+            raise ValueError(f"Input file is not a supported image format: {input_path}")
+        image_files = [input_path]
+    elif input_path.is_dir():
+        image_files = [
+            f for f in input_path.iterdir() 
+            if f.is_file() and f.suffix.lower() in image_extensions
+        ]
+        if not image_files:
+            raise ValueError(f"No valid image files found in directory: {input_path}")
+    else:
+        raise ValueError(f"Input path is neither a file nor a directory: {input_path}")
+    
+    # Show preview if requested
+    if show_preview:
+        if preview_image:
+            preview_path = Path(preview_image)
+            if not preview_path.exists():
+                raise FileNotFoundError(f"Preview image does not exist: {preview_path}")
+        else:
+            preview_path = image_files[0]
+        
+        print(f"🔍 Previewing grid on: {preview_path}")
+        preview_grids(str(preview_path), empty_board, show_units, show_empty)
+    
+    # Process all images
+    print(f"🚀 Processing {len(image_files)} image(s)...")
+    processed_count = 0
+    
+    for image_file in image_files:
+        print(f"🔍 Processing {image_file.name}...")
+        process_file(str(image_file), empty_board, str(board_dir), str(bench_dir))
+        processed_count += 1
+    
+    print(f"✅ Processed {processed_count} images.")
 
 def main():
-    empty_board = cv2.imread(EMPTY_BOARD_IMG)
-    if empty_board is None:
-        raise FileNotFoundError(f"Could not load {EMPTY_BOARD_IMG}")
-
-    # Pick one file to preview
-    test_img = os.path.join(INPUT_DIR, "20250923_173041.png")
-
-    # Show grids
-    #preview_grids(test_img, empty_board, show_units=True, show_empty=True)
-
-    for file in os.listdir(INPUT_DIR):
-        if file.lower().endswith((".png", ".jpg", ".jpeg")):
-            filepath = os.path.join(INPUT_DIR, file)
-            print(f"🔍 Processing {filepath}...")
-            process_file(filepath, empty_board)
-
-    print(f"✅ Done! Units saved in '{BOARD_DIR}' and '{BENCH_DIR}'.")
+    """Legacy main function for backward compatibility."""
+    # Use default paths for backward compatibility
+    input_dir = DEFAULT_INPUT_DIR
+    empty_board_path = DEFAULT_EMPTY_BOARD_IMG
+    output_dir = DEFAULT_OUTPUT_DIR
+    
+    isolate_units(
+        input_path=input_dir,
+        empty_board_path=empty_board_path,
+        output_dir=output_dir,
+        show_preview=True
+    )
 
 if __name__ == "__main__":
+    # Example usage:
+    
+    # Process a single image
+    # isolate_units(
+    #     input_path="../../data/board_crops/20250923_173041.png",
+    #     empty_board_path="../../data/reference_board/cropped_empty_board.png",
+    #     output_dir="../../data/units_single",
+    #     show_preview=True
+    # )
+    
+    # Process a folder of images
+    # isolate_units(
+    #     input_path="../../data/board_crops",
+    #     empty_board_path="../../data/reference_board/cropped_empty_board.png", 
+    #     output_dir="../../data/units_batch",
+    #     show_preview=True,
+    #     preview_image="../../data/board_crops/20250923_173041.png"
+    # )
+    
+    # Use legacy main function for backward compatibility
     main()

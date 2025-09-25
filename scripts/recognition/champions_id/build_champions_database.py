@@ -8,7 +8,7 @@ import os
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 IMAGE_SIZE = 224
-OUTPUT_DIR = "labeled"
+OUTPUT_DIR = "../../../data/labeled"
 
 
 def make_transform():
@@ -64,8 +64,8 @@ index.add(all_embeddings)
 print("✅ FAISS index built with", len(all_embeddings), "images")
 
 # Save everything for later
-np.save("embeddings_db.npy", all_embeddings)
-np.save("paths_db.npy", np.array(all_paths))
-np.save("labels_db.npy", np.array(all_labels))
-faiss.write_index(index, "faiss_db.index")
+np.save("../../../data/active_learning_ressources/embeddings_db.npy", all_embeddings)
+np.save("../../../data/active_learning_ressources/paths_db.npy", np.array(all_paths))
+np.save("../../../data/active_learning_ressources/labels_db.npy", np.array(all_labels))
+faiss.write_index(index, "../../../data/active_learning_ressources/faiss_db.index")
 print("✅ Saved embeddings, labels, paths, and FAISS index")
